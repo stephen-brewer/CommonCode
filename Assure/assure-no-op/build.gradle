@@ -1,6 +1,7 @@
 plugins {
     id 'org.jetbrains.kotlin.jvm'
     id 'maven-publish'
+    id 'com.jfrog.bintray'
 }
 
 group = rootProject.group
@@ -31,5 +32,16 @@ publishing {
             from components.java
             artifact sourcesJar
         }
+    }
+}
+bintray {
+    user = "$bintray_user"
+    key = "$bintray_key"
+    publications = ['assure']
+    pkg {
+        repo = 'org.stephenbrewer'
+        name = 'assure'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/stephen-brewer/CommonCode.git'
     }
 }
