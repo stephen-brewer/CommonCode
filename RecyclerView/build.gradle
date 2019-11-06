@@ -62,7 +62,7 @@ task sourcesJar(type: Jar) {
 publishing {
     publications {
         RecyclerView(MavenPublication) {
-            artifact("$buildDir/outputs/aar/arch-ext-release.aar") {
+            artifact("$buildDir/outputs/aar/RecyclerView-release.aar") {
                 builtBy {assembleRelease}
             }
             artifact sourcesJar
