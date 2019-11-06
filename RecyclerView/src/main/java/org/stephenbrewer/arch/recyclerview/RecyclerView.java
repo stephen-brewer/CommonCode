@@ -81,7 +81,6 @@ import androidx.core.view.accessibility.AccessibilityEventCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.core.widget.EdgeEffectCompat;
 import androidx.customview.view.AbsSavedState;
-import androidx.recyclerview.R;
 import org.stephenbrewer.arch.recyclerview.RecyclerView.ItemAnimator.ItemHolderInfo;
 
 import java.lang.annotation.Retention;
