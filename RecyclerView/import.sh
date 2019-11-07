@@ -22,3 +22,4 @@ cd $DST_DIR_CODE/$DST_PKG_DIR
 sed -i '' -e 's/package androidx.recyclerview.widget/package org.stephenbrewer.arch.recyclerview/g' *.*
 sed -i '' -e 's/import androidx.recyclerview.widget/import org.stephenbrewer.arch.recyclerview/g' *.*
 sed -i '' -e 's/import static androidx.recyclerview.widget/import static org.stephenbrewer.arch.recyclerview/g' *.*
+sed -i '' -e 's/import androidx.recyclerview.R;//g' *.*

@@ -22,6 +22,7 @@ import android.view.View;
 
 import androidx.core.view.ViewCompat;
 
+
 /**
  * Package private class to keep implementations. Putting them inside ItemTouchUIUtil makes them
  * public API, which is not desired in this case.

@@ -36,6 +36,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.GestureDetectorCompat;
 import androidx.core.view.ViewCompat;
+
 import org.stephenbrewer.arch.recyclerview.RecyclerView.OnItemTouchListener;
 import org.stephenbrewer.arch.recyclerview.RecyclerView.ViewHolder;
 
