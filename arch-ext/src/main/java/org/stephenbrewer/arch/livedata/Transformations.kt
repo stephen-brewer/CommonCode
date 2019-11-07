@@ -31,10 +31,12 @@ import androidx.lifecycle.Observer
 fun <T> LiveData<T?>.distinct(): LiveData<T?> {
     val distinctLD = MediatorLiveData<T?>()
     distinctLD.addSource(this, object : Observer<T?> {
-        private var previous: T? = null
+        private val NOT_SET = Object()
+        @Suppress("UNCHECKED_CAST")
+        private var previous: T? = NOT_SET as T
 
         override fun onChanged(it: T?) {
-            if (it != previous) {
+            if ((it != previous) || (previous == NOT_SET)) {
                 previous = it
                 distinctLD.value = it
             }
