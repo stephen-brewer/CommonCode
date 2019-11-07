@@ -81,6 +81,9 @@ import androidx.core.view.accessibility.AccessibilityEventCompat;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.core.widget.EdgeEffectCompat;
 import androidx.customview.view.AbsSavedState;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LifecycleRegistry;
 import org.stephenbrewer.arch.recyclerview.RecyclerView.ItemAnimator.ItemHolderInfo;
 
 import java.lang.annotation.Retention;
@@ -4212,6 +4215,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         mState.mRunPredictiveAnimations = false;
         mLayout.mRequestedSimpleAnimations = false;
         if (mRecycler.mChangedScrap != null) {
+            destroyViewHolders(mRecycler.mChangedScrap);
             mRecycler.mChangedScrap.clear();
         }
         if (mLayout.mPrefetchMaxObservedInInitialPrefetch) {
@@ -5000,6 +5004,13 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         return hidden;
     }
 
+    private static void destroyViewHolders(List<ViewHolder> data) {
+        for (int i = 0; i < data.size(); i++) {
+            ViewHolder vh = data.get(i);
+            vh.setDestroyed();
+        }
+    }
+
     /**
      * Find the topmost view under the given point.
      *
@@ -5664,6 +5675,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         public void clear() {
             for (int i = 0; i < mScrap.size(); i++) {
                 ScrapData data = mScrap.valueAt(i);
+                destroyViewHolders(data.mScrapHeap);
                 data.mScrapHeap.clear();
             }
         }
@@ -5679,7 +5691,8 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             scrapData.mMaxScrap = max;
             final ArrayList<ViewHolder> scrapHeap = scrapData.mScrapHeap;
             while (scrapHeap.size() > max) {
-                scrapHeap.remove(scrapHeap.size() - 1);
+                ViewHolder vh = scrapHeap.remove(scrapHeap.size() - 1);
+                vh.setDestroyed();
             }
         }
 
@@ -5739,6 +5752,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             final int viewType = scrap.getItemViewType();
             final ArrayList<ViewHolder> scrapHeap = getScrapDataForType(viewType).mScrapHeap;
             if (mScrap.get(viewType).mMaxScrap <= scrapHeap.size()) {
+                scrap.setDestroyed();
                 return;
             }
             if (DEBUG && scrapHeap.contains(scrap)) {
@@ -5915,6 +5929,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
          * recycled view pool will remain.
          */
         public void clear() {
+            destroyViewHolders(mAttachedScrap);
             mAttachedScrap.clear();
             recycleAndClearCachedViews();
         }
@@ -6232,6 +6247,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                         return null;
                     }
                     holder = mAdapter.createViewHolder(RecyclerView.this, type);
+                    holder.setCreated();
                     if (ALLOW_THREAD_GAP_WORK) {
                         // only bother finding nested RV if prefetching
                         RecyclerView innerView = findNestedRecyclerView(holder.itemView);
@@ -6389,6 +6405,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             for (int i = count - 1; i >= 0; i--) {
                 recycleCachedViewAt(i);
             }
+            destroyViewHolders(mCachedViews);
             mCachedViews.clear();
             if (ALLOW_THREAD_GAP_WORK) {
                 mPrefetchRegistry.clearPrefetchPositions();
@@ -6602,8 +6619,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         }
 
         void clearScrap() {
+            destroyViewHolders(mAttachedScrap);
             mAttachedScrap.clear();
             if (mChangedScrap != null) {
+                destroyViewHolders(mChangedScrap);
                 mChangedScrap.clear();
             }
         }
@@ -7530,6 +7549,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
     void dispatchChildDetached(View child) {
         final ViewHolder viewHolder = getChildViewHolderInt(child);
         onChildDetachedFromWindow(child);
+        if (viewHolder != null) {
+            viewHolder.setStopped();
+        }
         if (mAdapter != null && viewHolder != null) {
             mAdapter.onViewDetachedFromWindow(viewHolder);
         }
@@ -7545,6 +7567,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
     void dispatchChildAttached(View child) {
         final ViewHolder viewHolder = getChildViewHolderInt(child);
         onChildAttachedToWindow(child);
+        if (viewHolder != null) {
+            viewHolder.setStarted();
+        }
         if (mAdapter != null && viewHolder != null) {
             mAdapter.onViewAttachedToWindow(viewHolder);
         }
@@ -10939,7 +10964,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
      * to <code>ViewHolder</code> objects and that <code>RecyclerView</code> instances may hold
      * strong references to extra off-screen item views for caching purposes</p>
      */
-    public abstract static class ViewHolder {
+    public abstract static class ViewHolder implements LifecycleOwner {
         @NonNull
         public final View itemView;
         WeakReference<RecyclerView> mNestedRecyclerView;
@@ -11451,6 +11476,50 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
 
         boolean isUpdated() {
             return (mFlags & FLAG_UPDATE) != 0;
+        }
+
+        private LifecycleRegistry lifecycleRegistry = new LifecycleRegistry(this);
+        public void setCreated() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Created    {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE);
+        }
+        public void setStarted() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Started    {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START);
+        }
+        public void setResumed() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Resumed    {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);
+        }
+        public void setPaused() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Paused     {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE);
+        }
+        public void setStopped() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Stopped    {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP);
+        }
+        public void setDestroyed() {
+            if (DEBUG) {
+                Log.d(TAG, "ViewHolder Destroyed  {" + this + "}");
+            }
+            lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY);
+        }
+
+        @NonNull
+        @Override
+        public Lifecycle getLifecycle() {
+            return lifecycleRegistry;
         }
     }
 
