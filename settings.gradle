@@ -1,1 +1,1 @@
-include ':Assure:assure', ':Assure:assure-no-op', ':arch-ext', ':RecyclerView'
+include ':Assure:assure-devel', ':Assure:assure-no-op', ':arch-ext', ':RecyclerView'
