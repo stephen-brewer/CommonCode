@@ -139,4 +139,19 @@ class TransformationsTest {
 
         Assert.assertEquals("Observer should only be called when changing value.", 5, observerCallCounter.callCounter)
     }
+
+    @Test
+    fun distinct_distinctValuesEqualParent() {
+        val number = MutableLiveData<Int?>()
+        val distinctNumber: LiveData<Int?> = number.distinct()
+
+        val result1 = distinctNumber.value
+        Assert.assertEquals("First value should be null.", null, result1)
+
+        number.value = 1
+        Assert.assertEquals("Distinct value should equal the parent value.", number.value, distinctNumber.value)
+
+        number.value = null
+        Assert.assertEquals("Distinct value should equal the parent value.", number.value, distinctNumber.value)
+    }
 }

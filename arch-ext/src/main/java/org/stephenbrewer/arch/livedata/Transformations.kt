@@ -29,7 +29,11 @@ import androidx.lifecycle.Observer
  */
 @MainThread
 fun <T> LiveData<T?>.distinct(): LiveData<T?> {
-    val distinctLD = MediatorLiveData<T?>()
+    val distinctLD = object: MediatorLiveData<T?>() {
+        override fun getValue(): T? {
+            return this@distinct.value
+        }
+    }
     distinctLD.addSource(this, object : Observer<T?> {
         private val NOT_SET = Object()
         @Suppress("UNCHECKED_CAST")
@@ -51,7 +55,11 @@ fun <T> LiveData<T?>.distinct(): LiveData<T?> {
  */
 @MainThread
 fun <T> LiveData<T?>.nonNull(): LiveData<T> {
-    val nonNullLD = MediatorLiveData<T>()
+    val nonNullLD = object: MediatorLiveData<T>() {
+        override fun getValue(): T? {
+            return this@nonNull.value
+        }
+    }
     nonNullLD.addSource(this) {
         if (it != null) {
             nonNullLD.value = it
@@ -66,7 +74,11 @@ fun <T> LiveData<T?>.nonNull(): LiveData<T> {
  */
 @MainThread
 fun <T> LiveData<T?>.log(logTag: String): LiveData<T?> {
-    val loggingLD = LoggingLiveData<T?>(logTag)
+    val loggingLD = object: LoggingLiveData<T?>(logTag) {
+        override fun getValue(): T? {
+            return this@log.value
+        }
+    }
     loggingLD.addSource(this) {
         Log.d(logTag, "onChanged       : [$it].")
         loggingLD.value = it
@@ -78,7 +90,7 @@ fun <T> LiveData<T?>.log(logTag: String): LiveData<T?> {
 /**
  * LiveData that emits log statements
  */
-class LoggingLiveData<T>(private val logTag: String): MediatorLiveData<T>() {
+open class LoggingLiveData<T>(private val logTag: String): MediatorLiveData<T>() {
     private var observerCounter = 0
 
     override fun onActive() {
