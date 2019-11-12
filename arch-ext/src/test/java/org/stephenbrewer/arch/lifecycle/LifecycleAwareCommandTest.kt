@@ -40,7 +40,7 @@ class LifecycleAwareCommandTest {
 
         val command = LifecycleAwareCommand<ParameterType>()
 
-        lifecycle.markState(Lifecycle.State.INITIALIZED)
+        lifecycle.currentState = Lifecycle.State.INITIALIZED
         command.observe(lifecycleOwner) { parameter: ParameterType? ->
             parameter?.test()
         }
@@ -108,11 +108,11 @@ class LifecycleAwareCommandTest {
         val data = mockk<ParameterType>()
         every { data.test() } just Runs
 
-        lifecycle.markState(Lifecycle.State.RESUMED)
+        lifecycle.currentState = Lifecycle.State.RESUMED
         command.execute(data)
-        lifecycle.markState(Lifecycle.State.CREATED)
+        lifecycle.currentState = Lifecycle.State.CREATED
         command.execute(data)
-        lifecycle.markState(Lifecycle.State.RESUMED)
+        lifecycle.currentState = Lifecycle.State.RESUMED
         command.execute(data)
 
         verify(exactly = 2) { data.test() }
