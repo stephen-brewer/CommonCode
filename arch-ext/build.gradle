@@ -85,5 +85,8 @@ bintray {
         name = 'arch-ext'
         licenses = ['Apache-2.0']
         vcsUrl = 'https://github.com/stephen-brewer/CommonCode.git'
+        version {
+            name = rootProject.version
+        }
     }
 }

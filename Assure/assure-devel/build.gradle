@@ -28,7 +28,7 @@ task sourcesJar(type: Jar) {
 }
 publishing {
     publications {
-        assure(MavenPublication) {
+        assureDevel(MavenPublication) {
             from components.java
             artifact sourcesJar
         }
@@ -37,11 +37,14 @@ publishing {
 bintray {
     user = "$bintray_user"
     key = "$bintray_key"
-    publications = ['assure']
+    publications = ['assureDevel']
     pkg {
         repo = 'org.stephenbrewer'
-        name = 'assure'
+        name = 'assure-devel'
         licenses = ['Apache-2.0']
         vcsUrl = 'https://github.com/stephen-brewer/CommonCode.git'
+        version {
+            name = rootProject.version
+        }
     }
 }
