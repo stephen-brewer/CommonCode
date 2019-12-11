@@ -24,7 +24,7 @@ buildscript {
 apply from: 'local.properties.gradle'
 
 group = 'org.stephenbrewer'
-version = '0.1.5'
+version = '0.1.6'
 
 allprojects {
     repositories {
