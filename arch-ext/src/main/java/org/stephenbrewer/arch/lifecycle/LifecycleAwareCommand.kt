@@ -28,9 +28,9 @@ class LifecycleAwareCommand<T> {
 
     @MainThread
     fun observe(lifecycleOwner: LifecycleOwner, code: (parameter: T?) -> Unit) {
-        val singleEventObserver = CommandLifecycleObserver(lifecycleOwner, code)
-        lifecycleOwner.lifecycle.addObserver(singleEventObserver)
-        observers.add(singleEventObserver)
+        val commandLifecycleObserver = CommandLifecycleObserver(lifecycleOwner, code)
+        lifecycleOwner.lifecycle.addObserver(commandLifecycleObserver)
+        observers.add(commandLifecycleObserver)
     }
 
     // DataBinding does not recognise `execute(parameter: T? = null)` when using the default value
