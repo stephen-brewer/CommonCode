@@ -5008,7 +5008,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
     private static void destroyViewHolders(List<ViewHolder> data) {
         for (int i = 0; i < data.size(); i++) {
             ViewHolder vh = data.get(i);
-            vh.setDestroyed();
+            if (vh.canDestroy()) {
+                vh.setDestroyed();
+            }
         }
     }
 
@@ -5676,6 +5678,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
         public void clear() {
             for (int i = 0; i < mScrap.size(); i++) {
                 ScrapData data = mScrap.valueAt(i);
+                for (ViewHolder viewHolder : data.mScrapHeap) {
+                    viewHolder.setInPool(false);
+                }
                 destroyViewHolders(data.mScrapHeap);
                 data.mScrapHeap.clear();
             }
@@ -5693,7 +5698,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             final ArrayList<ViewHolder> scrapHeap = scrapData.mScrapHeap;
             while (scrapHeap.size() > max) {
                 ViewHolder vh = scrapHeap.remove(scrapHeap.size() - 1);
-                vh.setDestroyed();
+                vh.setInPool(false);
+                if (vh.canDestroy()) {
+                    vh.setDestroyed();
+                }
             }
         }
 
@@ -5719,7 +5727,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 final ArrayList<ViewHolder> scrapHeap = scrapData.mScrapHeap;
                 for (int i = scrapHeap.size() - 1; i >= 0; i--) {
                     if (!scrapHeap.get(i).isAttachedToTransitionOverlay()) {
-                        return scrapHeap.remove(i);
+                        ViewHolder viewHolder = scrapHeap.remove(i);
+                        viewHolder.setInPool(false);
+                        return viewHolder;
                     }
                 }
             }
@@ -5753,13 +5763,16 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             final int viewType = scrap.getItemViewType();
             final ArrayList<ViewHolder> scrapHeap = getScrapDataForType(viewType).mScrapHeap;
             if (mScrap.get(viewType).mMaxScrap <= scrapHeap.size()) {
-                scrap.setDestroyed();
+                if (scrap.canDestroy()) {
+                    scrap.setDestroyed();
+                }
                 return;
             }
             if (DEBUG && scrapHeap.contains(scrap)) {
                 throw new IllegalArgumentException("this scrap item already exists");
             }
             scrap.resetInternal();
+            scrap.setInPool(true);
             scrapHeap.add(scrap);
         }
 
@@ -6407,6 +6420,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             for (int i = count - 1; i >= 0; i--) {
                 recycleCachedViewAt(i);
             }
+            for (ViewHolder viewHolder : mCachedViews) {
+                viewHolder.setInCache(false);
+            }
             destroyViewHolders(mCachedViews);
             mCachedViews.clear();
             if (ALLOW_THREAD_GAP_WORK) {
@@ -6433,8 +6449,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             if (DEBUG) {
                 Log.d(TAG, "CachedViewHolder to be recycled: " + viewHolder);
             }
-            addViewHolderToRecycledViewPool(viewHolder, true);
+            viewHolder.setInCache(false);
             mCachedViews.remove(cachedViewIndex);
+            addViewHolderToRecycledViewPool(viewHolder, true);
         }
 
         /**
@@ -6501,6 +6518,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                         }
                         targetCacheIndex = cacheIndex + 1;
                     }
+                    holder.setInCache(true);
                     mCachedViews.add(targetCacheIndex, holder);
                     cached = true;
                 }
@@ -6714,6 +6732,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 if (!holder.isInvalid() && holder.getLayoutPosition() == position
                         && !holder.isAttachedToTransitionOverlay()) {
                     if (!dryRun) {
+                        holder.setInCache(false);
                         mCachedViews.remove(i);
                     }
                     if (DEBUG) {
@@ -6767,6 +6786,7 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 if (holder.getItemId() == id && !holder.isAttachedToTransitionOverlay()) {
                     if (type == holder.getItemViewType()) {
                         if (!dryRun) {
+                            holder.setInCache(false);
                             mCachedViews.remove(i);
                         }
                         return holder;
@@ -11079,6 +11099,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
          */
         static final int FLAG_BOUNCED_FROM_HIDDEN_LIST = 1 << 13;
 
+        // Flags indicating where this vh has references.
+        // Used to determine if a vh should be destroyed.
+        static final int FLAG_IN_CACHE = 1 << 14;
+        static final int FLAG_IN_POOL = 1 << 15;
+
         int mFlags;
 
         private static final List<Object> FULLUPDATE_PAYLOADS = Collections.emptyList();
@@ -11297,6 +11322,34 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
             return (mFlags & FLAG_REMOVED) != 0;
         }
 
+        boolean isInCache() {
+            return (mFlags & FLAG_IN_CACHE) != 0;
+        }
+
+        void setInCache(boolean inCache) {
+            if (inCache) {
+                mFlags |= FLAG_IN_CACHE;
+            } else {
+                mFlags &= ~FLAG_IN_CACHE;
+            }
+        }
+
+        boolean isInPool() {
+            return (mFlags & FLAG_IN_POOL) != 0;
+        }
+
+        void setInPool(boolean inPool) {
+            if (inPool) {
+                mFlags |= FLAG_IN_POOL;
+            } else {
+                mFlags &= ~FLAG_IN_POOL;
+            }
+        }
+
+        boolean canDestroy() {
+            return !isInPool() && !isInCache();
+        }
+
         boolean hasAnyOfTheFlags(int flags) {
             return (mFlags & flags) != 0;
         }
@@ -11408,6 +11461,9 @@ public class RecyclerView extends ViewGroup implements ScrollingView,
                 sb.append(" scrap ")
                         .append(mInChangeScrap ? "[changeScrap]" : "[attachedScrap]");
             }
+            sb.append(" ").append(getLifecycle().getCurrentState());
+            if (isInPool()) sb.append(" inPool");
+            if (isInCache()) sb.append(" inCache");
             if (isInvalid()) sb.append(" invalid");
             if (!isBound()) sb.append(" unbound");
             if (needsUpdate()) sb.append(" update");
